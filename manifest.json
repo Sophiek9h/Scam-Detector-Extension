@@ -3,6 +3,11 @@
     "name": "Scam Detector",
     "version": "1.0",
     "description": "detects suspicious websites and alerts the user",
+   "icons": {
+    "16": "icons/icon16.png",
+    "64": "icons/icon64.png",
+    "128": "icons/icon128.png"
+  },
     "content_scripts": [
         {
             "matches": ["<all_urls>"],
