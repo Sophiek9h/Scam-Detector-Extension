@@ -3,14 +3,43 @@
 let riskScore = 0;
 
 const protocol = window.location.protocol;
+const url = window.location.href.toLowerCase();
 
+const suspiciousWords = [
+  "free",
+  "crypto",
+  "urgent",
+  "bonus",
+  "win",
+  "prize",
+  "money",
+  "offer",
+  "click",
+  "download"
+];
+
+
+
+// first rule for https & http
 if (protocol !== "https:"){
     riskScore += 50;
     // console.log("This site is unsafe! (HTTP)");
+}
+
+// second rule for suspicious keywords in url
+suspiciousWords.forEach(word => {
+    if (url.includes(word)){
+        riskScore += 30;
+        console.log(`Suspicious word found in URL: ${word}`);
+    }
+})
+
+if (riskScore >= 50){
+    console.log("This site is unsafe!");
 
     let banner = document.createElement("div");
 
-    banner.textContent = "Warning: This site is not safe!";
+    banner.textContent = `⚠️ Risk Score: ${riskScore} - This site may be unsafe`;
     banner.style.position = "fixed";
     banner.style.top = "0";
     banner.style.left = "0";
@@ -30,12 +59,13 @@ if (protocol !== "https:"){
         setTimeout(() => {banner.remove();}, 500);
     }, 5000);
 
+
 }else{
-    // console.log("This site is safe!");
+    console.log("This site is safe!");
 
     let banner = document.createElement("div");
 
-    banner.textContent = "This site is safe!";
+    banner.textContent = `✅ Risk Score: ${riskScore} - This site is safe`;
     banner.style.position = "fixed";
     banner.style.top = "0";
     banner.style.left = "0";
@@ -55,6 +85,8 @@ if (protocol !== "https:"){
         setTimeout(() => {banner.remove();}, 500);
 
     }, 5000);
+
 }
+
 
 console.log("risk score: " + riskScore);
