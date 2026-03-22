@@ -1,5 +1,4 @@
-// content.js
-
+// check if site is using https
 function checkProtocol() {
   if (window.location.protocol !== "https:") {
     return {
@@ -10,6 +9,7 @@ function checkProtocol() {
   return { score: 0, reasons: [] };
 }
 
+// check for suspicious words in url
 function checkSuspiciousWords() {
   const url = window.location.href.toLowerCase();
   let score = 0;
@@ -27,11 +27,13 @@ function checkSuspiciousWords() {
   return { score, reasons };
 }
 
+// check url structure
 function checkUrlStructure() {
   const url = window.location.href.toLowerCase();
   const host = window.location.host.toLowerCase();
   let score = 0;
   let reasons = [];
+
   if (url.length > 75) {
     score += 30;
     reasons.push("URL is unusually long, which can be a tactic to hide malicious intent.");
@@ -48,28 +50,64 @@ function checkUrlStructure() {
   return { score, reasons };
 }
 
-// ✅ Wrapped in a function so it can be called fresh anytime
+// Check for raw IP address as domain
+function checkIpAddress() {
+  const host = window.location.hostname;
+  let score = 0;
+  let reasons = [];
+
+  const ipPattern = /^\d{1,3}(\.\d{1,3}){3}$/;
+  if (ipPattern.test(host)) {
+    score += 80;
+    reasons.push("Site is using a raw IP address instead of a domain name. Legitimate sites almost never do this.");
+  }
+  return { score, reasons };
+}
+
+// Check for typosquatting
+function checkTyposquatting() {
+  const host = window.location.hostname.toLowerCase();
+  let score = 0;
+  let reasons = [];
+
+  const popularSites = [
+    "paypal", "google", "facebook", "amazon", "apple",
+    "microsoft", "netflix", "instagram", "twitter", "youtube",
+    "whatsapp", "linkedin", "tiktok", "snapchat", "pinterest"
+  ];
+
+  popularSites.forEach(site => {
+    // Flag if the domain contains the brand name but isn't the real domain
+    if (host.includes(site) && !host.endsWith(`${site}.com`)) {
+      score += 80;
+      reasons.push(`Domain may be impersonating ${site} — it contains the name but is not the real ${site}.com.`);
+    }
+  });
+
+  return { score, reasons };
+}
+
 function runScan() {
   let totalScore = 0;
   let allReasons = [];
 
-  let result1 = checkProtocol();
-  totalScore += result1.score;
-  allReasons.push(...result1.reasons);
+  const checks = [
+    checkProtocol(),
+    checkSuspiciousWords(),
+    checkUrlStructure(),
+    checkIpAddress(),       
+    checkTyposquatting()   
+  ];
 
-  let result2 = checkSuspiciousWords();
-  totalScore += result2.score;
-  allReasons.push(...result2.reasons);
-
-  let result3 = checkUrlStructure();
-  totalScore += result3.score;
-  allReasons.push(...result3.reasons);
+  checks.forEach(result => {
+    totalScore += result.score;
+    allReasons.push(...result.reasons);
+  });
 
   return { totalScore, allReasons };
 }
 
 function showModal(score, reasons, color) {
-  // Remove any existing modal first to avoid duplicates
   document.getElementById('scam-detector-overlay')?.remove();
   document.getElementById('scam-detector-modal')?.remove();
 
