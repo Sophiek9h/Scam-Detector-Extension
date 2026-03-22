@@ -72,32 +72,101 @@ allReasons.push(...result3.reasons);
 
 let isUnSafe = totalScore >= 50;
 let isWarning = totalScore >= 20 && totalScore < 50;
-let status = isUnSafe ? "⚠️ Unsafe Site" : "⚠️ Suspicious Site";
-let message = `${status}\n\n Risk Score: ${totalScore}.\n\n Reasons:\n- ${allReasons.join("\n- ")}`;
 
 
-function showBanner(message, color) {
-  let banner = document.createElement('div');
+function showModal(score, reasons, color) {
+  // Overlay (dark background behind modal)
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 9998;
+  `;
 
-  banner.textContent = message;
+  // Modal box
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    width: 420px;
+    max-width: 90%;
+    z-index: 9999;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    font-family: sans-serif;
+  `;
 
-  banner.style.cssText = `position:fixed; top:0; left:0; width:100%; background:${color};
-    color:white; text-align:center; padding:10px; z-index:9999; transition:opacity 0.5s ease;`;
+  // Close button (X)
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕';
+  closeBtn.style.cssText = `
+    position: absolute; top: 10px; right: 16px;
+    background: none; border: none;
+    font-size: 16px; cursor: pointer;
+    color: #666;
+  `;
+  closeBtn.onclick = () => {
+    overlay.remove();
+    modal.remove();
+  };
 
-  document.body.appendChild(banner);
+  // Coloured top strip
+  const strip = document.createElement('div');
+  strip.style.cssText = `
+    background: ${color};
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-top: 10px;
+    margin-bottom: 16px;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+  `;
+  strip.textContent = isUnSafe ? "⚠️ Unsafe Site Detected" : "⚠️ Suspicious Site Detected";
 
-  setTimeout(() => {
-    banner.style.opacity = "0";
-    setTimeout(() => banner.remove(), 500);
-  }, 5000);
+  // Risk score
+  const scoreEl = document.createElement('p');
+  scoreEl.style.cssText = `margin: 0 0 12px; font-size: 14px; color: #333;`;
+  scoreEl.textContent = `Risk Score: ${score}`;
 
+  // Reasons heading
+  const reasonsHeading = document.createElement('p');
+  reasonsHeading.style.cssText = `margin: 0 0 8px; font-weight: bold; font-size: 14px; color: #333;`;
+  reasonsHeading.textContent = 'Reasons:';
+
+  // Reasons list
+  const list = document.createElement('ul');
+  list.style.cssText = `margin: 0; padding-left: 18px; font-size: 13px; color: #555; line-height: 1.6;`;
+  reasons.forEach(reason => {
+    const li = document.createElement('li');
+    li.textContent = reason;
+    list.appendChild(li);
+  });
+
+  modal.appendChild(closeBtn);
+  modal.appendChild(strip);
+  modal.appendChild(scoreEl);
+  modal.appendChild(reasonsHeading);
+  modal.appendChild(list);
+
+  document.body.appendChild(overlay);
+  document.body.appendChild(modal);
+
+  // Clicking the overlay also closes the modal
+  overlay.onclick = () => {
+    overlay.remove();
+    modal.remove();
+  };
 }
 
-
 if (isUnSafe) {
-  showBanner(message, "red");
+  showModal(totalScore, allReasons, "red");
 } else if (isWarning) {
-  showBanner(message, "orange");
+  showModal(totalScore, allReasons, "orange");
 } else {
   console.log("This site appears to be safe.");
 }
