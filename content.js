@@ -1,4 +1,4 @@
-// console.log('Scam detector running!!');
+// content.js
 
 function checkProtocol() {
   if (window.location.protocol !== "https:") {
@@ -10,7 +10,6 @@ function checkProtocol() {
   return { score: 0, reasons: [] };
 }
 
-
 function checkSuspiciousWords() {
   const url = window.location.href.toLowerCase();
   let score = 0;
@@ -19,24 +18,20 @@ function checkSuspiciousWords() {
     "urgent": 50, "prize": 50, "crypto": 50, "money": 80,
     "free": 40, "win": 40, "offer": 35, "click": 80, "download": 35, "bonus": 40
   };
-
   for (let word in suspiciousWords) {
     if (url.includes(word)) {
       score += suspiciousWords[word];
-      console.log(`Suspicious word found in URL: ${word}`);
       reasons.push(`Suspicious word found in URL: ${word}`);
     }
   }
   return { score, reasons };
 }
 
-
 function checkUrlStructure() {
   const url = window.location.href.toLowerCase();
   const host = window.location.host.toLowerCase();
   let score = 0;
   let reasons = [];
-
   if (url.length > 75) {
     score += 30;
     reasons.push("URL is unusually long, which can be a tactic to hide malicious intent.");
@@ -53,30 +48,35 @@ function checkUrlStructure() {
   return { score, reasons };
 }
 
+// ✅ Wrapped in a function so it can be called fresh anytime
+function runScan() {
+  let totalScore = 0;
+  let allReasons = [];
 
-let totalScore = 0;
-let allReasons = [];
+  let result1 = checkProtocol();
+  totalScore += result1.score;
+  allReasons.push(...result1.reasons);
 
-let result1 = checkProtocol();
-totalScore += result1.score;
-allReasons.push(...result1.reasons);
+  let result2 = checkSuspiciousWords();
+  totalScore += result2.score;
+  allReasons.push(...result2.reasons);
 
-let result2 = checkSuspiciousWords();
-totalScore += result2.score;
-allReasons.push(...result2.reasons);
+  let result3 = checkUrlStructure();
+  totalScore += result3.score;
+  allReasons.push(...result3.reasons);
 
-let result3 = checkUrlStructure();
-totalScore += result3.score;
-allReasons.push(...result3.reasons);
-
-
-let isUnSafe = totalScore >= 50;
-let isWarning = totalScore >= 20 && totalScore < 50;
-
+  return { totalScore, allReasons };
+}
 
 function showModal(score, reasons, color) {
-  // Overlay (dark background behind modal)
+  // Remove any existing modal first to avoid duplicates
+  document.getElementById('scam-detector-overlay')?.remove();
+  document.getElementById('scam-detector-modal')?.remove();
+
+  const isUnSafe = score >= 50;
+
   const overlay = document.createElement('div');
+  overlay.id = 'scam-detector-overlay';
   overlay.style.cssText = `
     position: fixed; top: 0; left: 0;
     width: 100%; height: 100%;
@@ -84,8 +84,8 @@ function showModal(score, reasons, color) {
     z-index: 9998;
   `;
 
-  // Modal box
   const modal = document.createElement('div');
+  modal.id = 'scam-detector-modal';
   modal.style.cssText = `
     position: fixed;
     top: 50%; left: 50%;
@@ -100,7 +100,6 @@ function showModal(score, reasons, color) {
     font-family: sans-serif;
   `;
 
-  // Close button (X)
   const closeBtn = document.createElement('button');
   closeBtn.textContent = '✕';
   closeBtn.style.cssText = `
@@ -109,12 +108,8 @@ function showModal(score, reasons, color) {
     font-size: 16px; cursor: pointer;
     color: #666;
   `;
-  closeBtn.onclick = () => {
-    overlay.remove();
-    modal.remove();
-  };
+  closeBtn.onclick = () => { overlay.remove(); modal.remove(); };
 
-  // Coloured top strip
   const strip = document.createElement('div');
   strip.style.cssText = `
     background: ${color};
@@ -126,19 +121,20 @@ function showModal(score, reasons, color) {
     font-size: 18px;
     font-weight: bold;
   `;
-  strip.textContent = isUnSafe ? "⚠️ Unsafe Site Detected" : "⚠️ Suspicious Site Detected";
+  strip.textContent = color === "green"
+    ? "✅ This Site Appears Safe"
+    : isUnSafe
+      ? "⚠️ Unsafe Site Detected"
+      : "⚠️ Suspicious Site Detected";
 
-  // Risk score
   const scoreEl = document.createElement('p');
   scoreEl.style.cssText = `margin: 0 0 12px; font-size: 14px; color: #333;`;
   scoreEl.textContent = `Risk Score: ${score}`;
 
-  // Reasons heading
   const reasonsHeading = document.createElement('p');
   reasonsHeading.style.cssText = `margin: 0 0 8px; font-weight: bold; font-size: 14px; color: #333;`;
-  reasonsHeading.textContent = 'Reasons:';
+  reasonsHeading.textContent = reasons.length > 0 ? 'Reasons:' : '';
 
-  // Reasons list
   const list = document.createElement('ul');
   list.style.cssText = `margin: 0; padding-left: 18px; font-size: 13px; color: #555; line-height: 1.6;`;
   reasons.forEach(reason => {
@@ -152,24 +148,31 @@ function showModal(score, reasons, color) {
   modal.appendChild(scoreEl);
   modal.appendChild(reasonsHeading);
   modal.appendChild(list);
-
   document.body.appendChild(overlay);
   document.body.appendChild(modal);
 
-  // Clicking the overlay also closes the modal
-  overlay.onclick = () => {
-    overlay.remove();
-    modal.remove();
-  };
+  overlay.onclick = () => { overlay.remove(); modal.remove(); };
 }
 
-if (isUnSafe) {
+// Auto-scan on page load
+const { totalScore, allReasons } = runScan();
+if (totalScore >= 50) {
   showModal(totalScore, allReasons, "red");
-} else if (isWarning) {
+} else if (totalScore >= 20) {
   showModal(totalScore, allReasons, "orange");
-} else {
-  console.log("This site appears to be safe.");
 }
 
-
-console.log(`Risk Score: ${totalScore}`);
+// Re-scan when icon is clicked
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === "showResult") {
+    const { totalScore, allReasons } = runScan();
+    if (totalScore >= 50) {
+      showModal(totalScore, allReasons, "red");
+    } else if (totalScore >= 20) {
+      showModal(totalScore, allReasons, "orange");
+    } else {
+      showModal(totalScore, allReasons, "green");
+    }
+  }
+  return true;
+});
