@@ -1,86 +1,106 @@
 // console.log('Scam detector running!!');
 
-// first rule for https & http
 function checkProtocol() {
-    if (window.location.protocol !== "https:"){
-        console.log("This site is unsafe! (HTTP)");
-        return 50;
-    }
-    return 0;
-}
-
-// second rule for suspicious keywords in url
-function checkSuspiciousWords() {
-    const url = window.location.href.toLowerCase();
-    let score = 0;
-
-    const suspiciousWords = {
-    "urgent": 50,
-    "prize": 50,
-    "crypto": 50,
-    "money": 80,
-    "free": 40,
-    "win": 40,
-    "offer": 35,
-    "click": 80,
-    "download": 35,
-    "bonus": 40
+  if (window.location.protocol !== "https:") {
+    return {
+      score: 50,
+      reasons: ["This site is using HTTP instead of HTTPS. HTTP does not encrypt data, making it vulnerable to interception and attacks."]
     };
-
-    for (let word in suspiciousWords) {
-        if (url.includes(word)) {
-            score += suspiciousWords[word];
-            console.log(`Suspicious word found in URL: ${word}`);
-        } 
-
-    }
-    return score;
+  }
+  return { score: 0, reasons: [] };
 }
 
-// calculate score based on all rules 
-let riskScore = 0;
 
-riskScore += checkProtocol();
-riskScore += checkSuspiciousWords();
+function checkSuspiciousWords() {
+  const url = window.location.href.toLowerCase();
+  let score = 0;
+  let reasons = [];
+  const suspiciousWords = {
+    "urgent": 50, "prize": 50, "crypto": 50, "money": 80,
+    "free": 40, "win": 40, "offer": 35, "click": 80, "download": 35, "bonus": 40
+  };
+
+  for (let word in suspiciousWords) {
+    if (url.includes(word)) {
+      score += suspiciousWords[word];
+      console.log(`Suspicious word found in URL: ${word}`);
+      reasons.push(`Suspicious word found in URL: ${word}`);
+    }
+  }
+  return { score, reasons };
+}
 
 
-// Decision logic based on risk score
-let isUnSafe = riskScore >= 50;
-let isWarning = riskScore >= 20 && riskScore < 50;
+function checkUrlStructure() {
+  const url = window.location.href.toLowerCase();
+  const host = window.location.host.toLowerCase();
+  let score = 0;
+  let reasons = [];
+
+  if (url.length > 75) {
+    score += 30;
+    reasons.push("URL is unusually long, which can be a tactic to hide malicious intent.");
+  }
+  if (host.split('.').length > 3) {
+    score += 20;
+    reasons.push("Domain has too many subdomains, which can be a tactic to mimic legitimate sites.");
+  }
+  const hyphenCount = (host.match(/-/g) || []).length;
+  if (hyphenCount >= 3) {
+    score += 40;
+    reasons.push("Too many hyphens in domain, which can be a tactic to mimic legitimate sites.");
+  }
+  return { score, reasons };
+}
 
 
-// Reusable function to create and display banner 
-function showBanner (message, color) {
+let totalScore = 0;
+let allReasons = [];
 
-    let banner = document.createElement('div');
+let result1 = checkProtocol();
+totalScore += result1.score;
+allReasons.push(...result1.reasons);
 
-    banner.textContent = message;
-    banner.style.position = "fixed";
-    banner.style.top = "0";
-    banner.style.left = "0";
-    banner.style.width = "100%";
-    banner.style.backgroundColor = color;
-    banner.style.transition = "opacity 0.5s ease";
-    banner.style.color = "white";
-    banner.style.textAlign = "center";
-    banner.style.padding = "10px";
-    banner.style.zIndex = "9999";
+let result2 = checkSuspiciousWords();
+totalScore += result2.score;
+allReasons.push(...result2.reasons);
 
-    document.body.appendChild(banner);
+let result3 = checkUrlStructure();
+totalScore += result3.score;
+allReasons.push(...result3.reasons);
 
-    setTimeout(() => {
-        banner.style.opacity = "0";
-        setTimeout(() => {banner.remove();}, 500);
-    }, 5000);
+
+let isUnSafe = totalScore >= 50;
+let isWarning = totalScore >= 20 && totalScore < 50;
+let status = isUnSafe ? "⚠️ Unsafe Site" : "⚠️ Suspicious Site";
+let message = `${status}\n\n Risk Score: ${totalScore}.\n\n Reasons:\n- ${allReasons.join("\n- ")}`;
+
+
+function showBanner(message, color) {
+  let banner = document.createElement('div');
+
+  banner.textContent = message;
+
+  banner.style.cssText = `position:fixed; top:0; left:0; width:100%; background:${color};
+    color:white; text-align:center; padding:10px; z-index:9999; transition:opacity 0.5s ease;`;
+
+  document.body.appendChild(banner);
+
+  setTimeout(() => {
+    banner.style.opacity = "0";
+    setTimeout(() => banner.remove(), 500);
+  }, 5000);
+
 }
 
 
 if (isUnSafe) {
-    showBanner("Warning: This site is unsafe!", "red");
-}else if (isWarning) {
-    showBanner("Caution: This site may be suspicious!", "orange");
-}else {
-    showBanner("This site appears to be safe.", "green");
+  showBanner(message, "red");
+} else if (isWarning) {
+  showBanner(message, "orange");
+} else {
+  console.log("This site appears to be safe.");
 }
 
-console.log(`Risk Score: ${riskScore}`);
+
+console.log(`Risk Score: ${totalScore}`);
